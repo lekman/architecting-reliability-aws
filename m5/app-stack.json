@@ -140,34 +140,11 @@
                 ]
             }
         },
-        "InstanceRole": {
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-               "RoleName": "InstanceRole",
-               "AssumeRolePolicyDocument": {
-                  "Version" : "2012-10-17",
-                  "Statement": [ {
-                     "Effect": "Allow",
-                     "Principal": {
-                        "Service": [ "ec2.amazonaws.com" ]
-                     },
-                     "Action": [ "sts:AssumeRole" ]
-                  } ]
-               },
-               "Path": "/",
-               "ManagedPolicyArns": [ "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM",
-                                      "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-                                ]
-               }
-        },
         "InstanceProfile": {
             "Type": "AWS::IAM::InstanceProfile",
             "Properties": {
                "InstanceProfileName": "InstanceProfile",
-               "Path": "/",
-               "Roles": [ {
-                  "Ref": "InstanceRole"
-               } ]
+               "Path": "/"
             }
         },
         "WebserverGroup": {
