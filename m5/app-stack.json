@@ -1,0 +1,560 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation Template that creates a launch template, Auto Scaling group, and an Application Load Balancer.",
+    "Parameters": {
+        "ALBCertificateArn": {
+            "Description": "ARN of ACM TLS certificate",
+            "Type": "String",
+            "Default": "arn:aws:acm:us-east-1:158826777352:certificate/f82c6f54-5d61-4776-afd5-957949d5f68a",
+            "ConstraintDescription": "must be a valid ARN"
+        },
+        "WebTierInstanceType": {
+            "Description": "Webserver EC2 instance type",
+            "Type": "String",
+            "Default": "t3.micro",
+            "AllowedValues": [
+                "t2.micro",
+                "t3.micro"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "AppTierInstanceType": {
+            "Description": "App server EC2 instance type",
+            "Type": "String",
+            "Default": "t3.micro",
+            "AllowedValues": [
+                "t2.micro",
+                "t3.micro"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "Default": "ccnetkeypair",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+        },
+        "NetworkStackTemplateURL": {
+            "Description": "URL of CF template for the network stack",
+            "Type": "String",
+            "AllowedPattern": "https:\\/\\/?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)",
+            "Default": "https://s3.amazonaws.com/benpiper.com-cftemplates/network-stack.json",
+            "ConstraintDescription": "must be a valid URL"
+        },
+        "SSHLocation": {
+            "Description": " The IP address range that can be used to SSH to the EC2 instances",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "0.0.0.0/0",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "WebserverCapacity": {
+            "Default": "2",
+            "Description": "The initial nuber of Webserver instances",
+            "Type": "Number",
+            "MinValue": "1",
+            "MaxValue": "6",
+            "ConstraintDescription": "must be between 1 and 6 EC2 instances."
+        },
+        "AppserverCapacity": {
+            "Default": "1",
+            "Description": "The initial nuber of Webserver instances",
+            "Type": "Number",
+            "MinValue": "1",
+            "MaxValue": "2",
+            "ConstraintDescription": "must be between 1 and 2 EC2 instances."
+        }
+    },
+    "Mappings": {
+        "AWSInstanceType2Arch": {
+            "t2.micro": {
+                "Arch": "HVM64"
+            },
+            "t3.micro": {
+                "Arch": "HVM64"
+            }
+        },
+        "AWSRegionArch2AMI": {
+            "us-east-1": {
+                "PV64": "ami-2a69aa47",
+                "HVM64": "ami-97785bed",
+                "HVMG2": "ami-0a6e3770"
+            },
+            "us-west-2": {
+                "PV64": "ami-7f77b31f",
+                "HVM64": "ami-f2d3638a",
+                "HVMG2": "ami-ee15a196"
+            },
+            "us-west-1": {
+                "PV64": "ami-a2490dc2",
+                "HVM64": "ami-824c4ee2",
+                "HVMG2": "ami-0da4a46d"
+            },
+            "eu-west-1": {
+                "PV64": "ami-4cdd453f",
+                "HVM64": "ami-d834aba1",
+                "HVMG2": "ami-af8013d6"
+            },
+            "eu-west-2": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-403e2524",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "eu-west-3": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-8ee056f3",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "eu-central-1": {
+                "PV64": "ami-6527cf0a",
+                "HVM64": "ami-5652ce39",
+                "HVMG2": "ami-1d58ca72"
+            },
+            "ap-northeast-1": {
+                "PV64": "ami-3e42b65f",
+                "HVM64": "ami-ceafcba8",
+                "HVMG2": "ami-edfd658b"
+            },
+            "ap-northeast-2": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-863090e8",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "ap-northeast-3": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-83444afe",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "ap-southeast-1": {
+                "PV64": "ami-df9e4cbc",
+                "HVM64": "ami-68097514",
+                "HVMG2": "ami-c06013bc"
+            },
+            "ap-southeast-2": {
+                "PV64": "ami-63351d00",
+                "HVM64": "ami-942dd1f6",
+                "HVMG2": "ami-85ef12e7"
+            },
+            "ap-south-1": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-531a4c3c",
+                "HVMG2": "ami-411e492e"
+            },
+            "us-east-2": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-f63b1193",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "ca-central-1": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-a954d1cd",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "sa-east-1": {
+                "PV64": "ami-1ad34676",
+                "HVM64": "ami-84175ae8",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "cn-north-1": {
+                "PV64": "ami-77559f1a",
+                "HVM64": "ami-cb19c4a6",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "cn-northwest-1": {
+                "PV64": "ami-80707be2",
+                "HVM64": "ami-3e60745c",
+                "HVMG2": "NOT_SUPPORTED"
+            }
+        }
+    },
+    "Resources": {
+        "NetworkStack" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "Properties" : {
+               "TemplateURL" : {
+                   "Ref": "NetworkStackTemplateURL"
+               }
+            }
+         },
+        "WebTierLoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "Name": "webtier",
+                "Subnets": [
+                    { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PublicSubnetAID" ] },
+                    { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PublicSubnetBID" ] }
+                ],
+                "SecurityGroups": [ { "Ref" : "WebserverSecurityGroup" } ]
+            }
+        },
+        "WebTierALBListener": {
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties": {
+                "DefaultActions": [
+                    {
+                        "Type": "forward",
+                        "TargetGroupArn": {
+                            "Ref": "WebTierALBTargetGroup"
+                        }
+                    }
+                ],
+                "LoadBalancerArn": {
+                    "Ref": "WebTierLoadBalancer"
+                },
+                "Port": "443",
+                "Protocol": "HTTPS",
+                "Certificates": [{
+                    "CertificateArn" : {
+                        "Ref": "ALBCertificateArn"
+                    }
+                }]
+            }
+        },
+        "WebTierALBTargetGroup": {
+            "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "VpcId": { "Fn::GetAtt" : [ "NetworkStack", "Outputs.VPCID" ] },
+                "HealthCheckIntervalSeconds": 10,
+                "HealthCheckTimeoutSeconds": 5,
+                "HealthyThresholdCount": 2,
+                "Port": 80,
+                "Protocol": "HTTP",
+                "UnhealthyThresholdCount": 5,
+                "TargetGroupAttributes": [
+                   {
+                       "Key": "deregistration_delay.timeout_seconds",
+                       "Value": "20"
+                    },
+                    {
+                        "Key": "stickiness.enabled",
+                        "Value": "true"
+                    },
+                    {
+                        "Key": "stickiness.type",
+                        "Value": "lb_cookie"
+                    },
+                    {
+                        "Key": "stickiness.lb_cookie.duration_seconds",
+                        "Value": "30"
+                    }
+                ]
+            }
+        },
+        "InstanceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+               "RoleName": "InstanceRole",
+               "AssumeRolePolicyDocument": {
+                  "Version" : "2012-10-17",
+                  "Statement": [ {
+                     "Effect": "Allow",
+                     "Principal": {
+                        "Service": [ "ec2.amazonaws.com" ]
+                     },
+                     "Action": [ "sts:AssumeRole" ]
+                  } ]
+               },
+               "Path": "/",
+               "ManagedPolicyArns": [ "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM",
+                                      "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+                                ]
+               }
+        },
+        "InstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+               "InstanceProfileName": "InstanceProfile",
+               "Path": "/",
+               "Roles": [ {
+                  "Ref": "InstanceRole"
+               } ]
+            }
+        },
+        "WebserverGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+                "VPCZoneIdentifier": [
+                    { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PublicSubnetAID" ] },
+                    { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PublicSubnetBID" ] }
+                ],
+                "LaunchTemplate": {
+                    "LaunchTemplateId" : { "Ref": "WebserverLaunchTemplate" },
+                    "Version" : "1"
+                  },
+                "MinSize": "1",
+                "MaxSize": "4",
+                "DesiredCapacity": {
+                    "Ref": "WebserverCapacity"
+                },
+                "TargetGroupARNs": [
+                    {
+                        "Ref": "WebTierALBTargetGroup"
+                    }
+                ]
+            },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Timeout": "PT10M",
+                    "Count": {
+                        "Ref": "WebserverCapacity"
+                    }
+                }
+            },
+            "UpdatePolicy": {
+                "AutoScalingRollingUpdate": {
+                    "MinInstancesInService": "1",
+                    "MaxBatchSize": "1",
+                    "PauseTime": "PT15M",
+                    "WaitOnResourceSignals": "true"
+                }
+            }
+        },
+        "WebserverLaunchTemplate": {
+            "Type": "AWS::EC2::LaunchTemplate",
+            "Metadata": {
+                "Comment1": "Configure the web server launch template"
+            },
+            "Properties": {                
+                "LaunchTemplateData": {
+                    "ImageId": "ami-01d025118d8e760db",
+                    "IamInstanceProfile" : {
+                        "Arn" : { "Fn::GetAtt": [
+                            "InstanceProfile",
+                            "Arn"
+                        ] }
+                      },
+                    "InstanceType": {
+                        "Ref": "WebTierInstanceType"
+                    },
+                    "SecurityGroupIds": [
+                        {
+                            "Ref": "WebserverSecurityGroup"
+                        }
+                    ],
+                    "KeyName": {
+                        "Ref": "KeyName"
+                    },
+                    "UserData": {
+                        "Fn::Base64": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "#!/bin/bash\n",
+                                    "sudo yum -y install docker aws-cfn-bootstrap\n",
+                                    "sudo service docker start\n",
+                                    "sudo docker run -d -p 80:80 -e APPSERVER='http://", {"Fn::GetAtt": [
+                                        "AppTierLoadBalancer",
+                                        "DNSName"
+                                    ]}, ":8080' benpiper/mtwa:web\n",
+                                    "/opt/aws/bin/cfn-signal -e 0 --stack ", { "Ref": "AWS::StackName" }," --resource WebserverGroup\n"
+                                ]
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "WebserverSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+              "GroupDescription" : "Web server security group",
+              "SecurityGroupIngress": [
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": "80",
+                    "ToPort": "80",
+                    "CidrIp": "0.0.0.0/0"
+                },
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": "443",
+                    "ToPort": "443",
+                    "CidrIp": "0.0.0.0/0"
+                },
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": "22",
+                    "ToPort": "22",
+                    "CidrIp": {
+                        "Ref": "SSHLocation"
+                    }
+                }
+            ],
+              "VpcId": {
+                "Fn::GetAtt" : [ "NetworkStack", "Outputs.VPCID" ] }
+              }
+            },
+            "AppTierLoadBalancer": {
+                "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+                "Properties": {
+                    "Name": "apptier",
+                    "Scheme": "internal",
+                    "Subnets": [
+                        { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PrivateSubnetAID" ] },
+                        { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PrivateSubnetBID" ] }
+                    ],
+                    "SecurityGroups": [ {"Ref" : "AppserverSecurityGroup" } ]
+                }
+            },
+            "AppTierALBListener": {
+                "Type": "AWS::ElasticLoadBalancingV2::Listener",
+                "Properties": {
+                    "DefaultActions": [
+                        {
+                            "Type": "forward",
+                            "TargetGroupArn": {
+                                "Ref": "AppTierALBTargetGroup"
+                            }
+                        }
+                    ],
+                    "LoadBalancerArn": {
+                        "Ref": "AppTierLoadBalancer"
+                    },
+                    "Port": "8080",
+                    "Protocol": "HTTP"
+                }
+            },
+            "AppTierALBTargetGroup": {
+                "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+                "Properties": {
+                    "VpcId": { "Fn::GetAtt" : [ "NetworkStack", "Outputs.VPCID" ] },
+                    "HealthCheckIntervalSeconds": 10,
+                    "HealthCheckTimeoutSeconds": 5,
+                    "HealthyThresholdCount": 2,
+                    "Port": 8080,
+                    "Protocol": "HTTP",
+                    "UnhealthyThresholdCount": 5,
+                    "TargetGroupAttributes": [
+                       {
+                           "Key": "deregistration_delay.timeout_seconds",
+                           "Value": "20"
+                        },
+                        {
+                            "Key": "stickiness.enabled",
+                            "Value": "true"
+                        },
+                        {
+                            "Key": "stickiness.type",
+                            "Value": "lb_cookie"
+                        },
+                        {
+                            "Key": "stickiness.lb_cookie.duration_seconds",
+                            "Value": "30"
+                        }
+                    ]
+                }
+            },
+            "AppserverGroup": {
+                "Type": "AWS::AutoScaling::AutoScalingGroup",
+                "Properties": {
+                    "VPCZoneIdentifier": [
+                        { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PrivateSubnetAID" ] },
+                        { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PrivateSubnetBID" ] }
+                    ],
+                    "LaunchTemplate": {
+                        "LaunchTemplateId" : { "Ref": "AppserverLaunchTemplate" },
+                        "Version" : "1"
+                      },
+                    "MinSize": "1",
+                    "MaxSize": "2",
+                    "DesiredCapacity": {
+                        "Ref": "AppserverCapacity"
+                    },
+                    "TargetGroupARNs": [
+                        {
+                            "Ref": "AppTierALBTargetGroup"
+                        }
+                    ]
+                },
+                "UpdatePolicy": {
+                    "AutoScalingRollingUpdate": {
+                        "MinInstancesInService": "1",
+                        "MaxBatchSize": "1",
+                        "PauseTime": "PT15M",
+                        "WaitOnResourceSignals": "true"
+                    }
+                }
+            },
+            "AppserverLaunchTemplate": {
+                "Type": "AWS::EC2::LaunchTemplate",
+                "Metadata": {
+                    "Comment1": "Configure the app server launch template"
+                },
+                "Properties": {
+                    "LaunchTemplateData": {
+                        "ImageId": "ami-01d025118d8e760db",
+                        "IamInstanceProfile" : {
+                            "Arn" : { "Fn::GetAtt": [
+                                "InstanceProfile",
+                                "Arn"
+                            ] }
+                          },
+                        "InstanceType": {
+                            "Ref": "AppTierInstanceType"
+                        },
+                        "SecurityGroupIds": [
+                            {
+                                "Ref": "AppserverSecurityGroup"
+                            }
+                        ],
+                        "KeyName": {
+                            "Ref": "KeyName"
+                        },
+                        "UserData": {
+                            "Fn::Base64": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "#!/bin/bash\n",
+                                        "sudo yum -y install docker aws-cfn-bootstrap\n",
+                                        "sudo service docker start\n",
+                                        "sudo docker run -d -p 8080:8080 benpiper/mtwa:app\n",
+                                        "/opt/aws/bin/cfn-signal -e 0 --stack ", { "Ref": "AWS::StackName" }," --resource AppserverGroup\n"
+                                    ]
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "AppserverSecurityGroup" : {
+                "Type" : "AWS::EC2::SecurityGroup",
+                "Properties" : {
+                  "GroupDescription" : "App server security group",
+                  "VpcId": {
+                    "Fn::GetAtt" : [ "NetworkStack", "Outputs.VPCID" ] }
+                  }
+                },
+            "AppserverSecurityGroupIngress": {
+                "Type": "AWS::EC2::SecurityGroupIngress",
+                "Properties": {
+                    "IpProtocol": "tcp",
+                    "FromPort": "8080",
+                    "ToPort": "8080",
+                    "CidrIp": "0.0.0.0/0",
+                    "GroupId": { "Fn::GetAtt": [ "AppserverSecurityGroup", "GroupId" ] }
+                    }
+                }
+},
+    "Outputs": {
+        "WebsiteURL": {
+            "Description": "URL for public ALB",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Fn::GetAtt": [
+                                "WebTierLoadBalancer",
+                                "DNSName"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        }
+    }
+}
