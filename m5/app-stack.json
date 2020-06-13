@@ -140,13 +140,6 @@
                 ]
             }
         },
-        "InstanceProfile": {
-            "Type": "AWS::IAM::InstanceProfile",
-            "Properties": {
-               "InstanceProfileName": "InstanceProfile",
-               "Path": "/"
-            }
-        },
         "WebserverGroup": {
             "Type": "AWS::AutoScaling::AutoScalingGroup",
             "Properties": {
@@ -194,12 +187,6 @@
             "Properties": {                
                 "LaunchTemplateData": {
                     "ImageId": "ami-01d025118d8e760db",
-                    "IamInstanceProfile" : {
-                        "Arn" : { "Fn::GetAtt": [
-                            "InstanceProfile",
-                            "Arn"
-                        ] }
-                      },
                     "InstanceType": {
                         "Ref": "WebTierInstanceType"
                     },
@@ -360,12 +347,6 @@
                 "Properties": {
                     "LaunchTemplateData": {
                         "ImageId": "ami-01d025118d8e760db",
-                        "IamInstanceProfile" : {
-                            "Arn" : { "Fn::GetAtt": [
-                                "InstanceProfile",
-                                "Arn"
-                            ] }
-                          },
                         "InstanceType": {
                             "Ref": "AppTierInstanceType"
                         },
