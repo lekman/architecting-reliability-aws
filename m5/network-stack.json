@@ -102,20 +102,6 @@
                 }
             }
         },
-        "PublicSubnetNetworkAclAssociation": {
-            "Type": "AWS::EC2::SubnetNetworkAclAssociation",
-            "Properties": {
-                "SubnetId": {
-                    "Ref": "PublicSubnetA"
-                },
-                "NetworkAclId": {
-                    "Fn::GetAtt": [
-                        "AppVPC",
-                        "DefaultNetworkAcl"
-                    ]
-                }
-            }
-        },
         "PrivateSubnetA": {
             "Type": "AWS::EC2::Subnet",
             "Metadata": {
@@ -142,6 +128,66 @@
                 "CidrBlock": "10.0.102.0/24",
                 "AvailabilityZone" : "us-east-1b",
                 "Tags" : [ { "Key" : "Name", "Value" : "PrivateSubnetB" } ]
+            }
+        },
+        "NatGatewayEIP" : {
+            "Type" : "AWS::EC2::EIP",
+            "Properties" : {
+                "Tags" : [ {"Key" : "Name", "Value" : "NatGatewayEIP" } ]
+            }
+          },
+        "NatGateway": {
+            "Type" : "AWS::EC2::NatGateway",
+            "Properties" : {
+                "AllocationId" : {"Fn::GetAtt": [
+                    "NatGatewayEIP",
+                    "AllocationId"
+                ]},
+                "SubnetId" : { "Ref" : "PublicSubnetA"},
+                "Tags" : [ {"Key" : "Name", "Value" : "NatGateway" } ]
+              }
+          },
+        "PrivateRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "AppVPC"
+                }
+            }
+        },
+        "PrivateRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "NatGateway",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NatGateway"
+                }
+            }
+        },
+        "PrivateSubnetARouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PrivateSubnetA"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTable"
+                }
+            }
+        },
+        "PrivateSubnetBRouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "PrivateSubnetB"
+                },
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTable"
+                }
             }
         }
     },

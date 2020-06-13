@@ -2,7 +2,7 @@
 
 ## [Application stack template](app-stack.json)
 
-Deploys the following in a virtual private cloud (VPC):
+Deploys the following in a virtual private cloud (VPC) (created by the [network stack template](network-stack.json)):
 - Auto Scaling group in the public web tier
 - Internet-facing application load balancer for the web tier
 - Auto Scaling group in the application tier
@@ -16,3 +16,4 @@ Deploys the following:
 - Two public subnets in different zones
 - Two private subnets in different zones
 - Internet gateway
+- NAT gateway
