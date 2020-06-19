@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "AWS CloudFormation Sample Template that creates a VPC with DNS and public IPs enabled and two public subnets. Exports VPC and public subnet IDs.",
+    "Description": "AWS CloudFormation Sample Template that creates a DNS-enabled VPC, two public subnets, two private subnets, and a NAT gateway. Exports VPC and public subnet IDs.",
     "Resources": {
         "AppVPC": {
             "Type": "AWS::EC2::VPC",

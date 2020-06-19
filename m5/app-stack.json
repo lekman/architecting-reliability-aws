@@ -1,11 +1,11 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "AWS CloudFormation Template that creates a launch template, Auto Scaling group, and an Application Load Balancer.",
+    "Description": "AWS CloudFormation template that creates launch templates, Auto Scaling groups, and application load balancers.",
     "Parameters": {
         "ALBCertificateArn": {
             "Description": "ARN of ACM TLS certificate",
             "Type": "String",
-            "Default": "arn:aws:acm:us-east-1:158826777352:certificate/f82c6f54-5d61-4776-afd5-957949d5f68a",
+            "Default": "arn:aws:acm:us-east-1:158826777352:certificate/0efe7d19-57a5-450f-a8e9-0992add78a55",
             "ConstraintDescription": "must be a valid ARN"
         },
         "WebTierInstanceType": {
@@ -59,7 +59,7 @@
             "ConstraintDescription": "must be between 1 and 6 EC2 instances."
         },
         "AppserverCapacity": {
-            "Default": "1",
+            "Default": "2",
             "Description": "The initial nuber of Webserver instances",
             "Type": "Number",
             "MinValue": "1",
@@ -151,7 +151,7 @@
                     "LaunchTemplateId" : { "Ref": "WebserverLaunchTemplate" },
                     "Version" : "1"
                   },
-                "MinSize": "1",
+                "MinSize": "2",
                 "MaxSize": "4",
                 "DesiredCapacity": {
                     "Ref": "WebserverCapacity"
@@ -160,7 +160,9 @@
                     {
                         "Ref": "WebTierALBTargetGroup"
                     }
-                ]
+                ],
+                "HealthCheckType": "ELB",
+                "HealthCheckGracePeriod":300
             },
             "CreationPolicy": {
                 "ResourceSignal": {
@@ -218,6 +220,21 @@
                 }
             }
         },
+        "WebTierAutoScalingPolicy": {
+            "Type":"AWS::AutoScaling::ScalingPolicy",
+            "Properties":{
+              "AutoScalingGroupName":{
+                "Ref":"WebserverGroup"
+              },
+              "PolicyType":"TargetTrackingScaling",
+              "TargetTrackingConfiguration":{
+                "PredefinedMetricSpecification":{
+                  "PredefinedMetricType":"ASGAverageCPUUtilization"
+                },
+                "TargetValue": "75"
+                }
+              }
+            },
         "WebserverSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
@@ -328,7 +345,9 @@
                         {
                             "Ref": "AppTierALBTargetGroup"
                         }
-                    ]
+                    ],
+                    "HealthCheckType": "ELB",
+                    "HealthCheckGracePeriod":300
                 },
                 "UpdatePolicy": {
                     "AutoScalingRollingUpdate": {
