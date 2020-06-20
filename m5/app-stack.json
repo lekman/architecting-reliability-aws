@@ -79,7 +79,7 @@
         "WebTierLoadBalancer": {
             "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
             "Properties": {
-                "Name": "webtier",
+                "Name": { "Fn::Join": ["", [ "webtier-", { "Ref": "AWS::StackName" }]]},
                 "Subnets": [
                     { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PublicSubnetAID" ] },
                     { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PublicSubnetBID" ] }
@@ -268,7 +268,7 @@
             "AppTierLoadBalancer": {
                 "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
                 "Properties": {
-                    "Name": "apptier",
+                    "Name": { "Fn::Join": ["", [ "apptier-", { "Ref": "AWS::StackName" }]]},
                     "Scheme": "internal",
                     "Subnets": [
                         { "Fn::GetAtt" : [ "NetworkStack", "Outputs.PrivateSubnetAID" ] },
