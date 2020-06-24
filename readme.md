@@ -1,4 +1,4 @@
-# [Architecting for Reliability on AWS](pluralsight.pxf.io/QkzaP)
+# [Architecting for Reliability on AWS](https://pluralsight.pxf.io/QkzaP)
 
 [Building Virtual Private Cloud (VPC) Networks](m4)
 
