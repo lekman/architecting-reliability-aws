@@ -17,3 +17,10 @@ Deploys the following:
 - Two private subnets in different zones
 - Internet gateway
 - NAT gateway
+
+## Region considerations
+
+If you intend to deploy these templates outside of the us-east-1 region, you'll need to change the following:
+- All references to us-east-1 in [network-stack.json](network-stack.json)
+- The AMI ID in [app-stack.json](app-stack.json)
+- Add `--region [region-code]` to the end of the `cfn-signal` command in [app-stack.json](app-stack.json)
