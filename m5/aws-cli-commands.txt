@@ -1,10 +1,15 @@
 aws acm list-certificates
+aws ec2 describe-images --owners self amazon > amis.txt
+CTRL-F "Amazon Linux 2 Kernel 5.10 AMI"
+
 aws cloudformation validate-template --template-body file://app-stack.json
 aws cloudformation validate-template --template-body file://network-stack.json
 aws s3 cp network-stack.json s3://benpiper.com-cftemplates
-aws cloudformation deploy --template-file "app-stack.json" --stack-name "app-stack"
-aws cloudformation describe-stacks --stack-name "app-stack"
+aws cloudformation deploy --template-file "app-stack.json" --stack-name "pluralsight-m5"
+aws cloudformation describe-stacks --stack-name "pluralsight-m5"
 aws autoscaling describe-auto-scaling-instances
 aws elbv2 describe-load-balancers --names "webtier"
-aws cloudformation delete-stack --stack-name "app-stack"
+aws cloudformation delete-stack --stack-name "pluralsight-m5"
 aws cloudformation describe-stacks
+
+aws cloudformation update-stack --stack-name "pluralsight-m5" --template-body file://app-stack.json
